@@ -6,3 +6,5 @@ It contains a sample code to test the current terminal's graphic capabilities by
  * the standard indexed-color palette (for terminals `xterm-256color` and above)
  * the standard gray ramp gradient (for terminals `xterm-256color` and above)
  * a subsampling of the full RGB/8 (24 bits/pixel) color cube (for terminals `xterm-24bit` and above)
+
+<img src="https://github.com/walter-arrighetti/pyANSIterm/blob/main/pics/pyANSIterm.py_sample.png" />
