@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 ##########################################################
-#  pyANSIterm 0.1                                        #
+#  pyANSIterm 0.2                                        #
 #--------------------------------------------------------#
 #   Interates with a terminal using ANSI control codes   #
 #--------------------------------------------------------#
@@ -108,34 +108,48 @@ class ANSITerminal:
 #		elif a1.lower() in ["get"]:
 #			print(self._esc+"[6n")	# Returns current (x,y) postition as ESC[#;#R
 		return(self._esc+code)
-	def color(self,foreground=None,background=None):
+	def __processcolor(self,col,bg=False,u=False):
+		if bg:	colstring = "48;"
+		elif u:	colstring = ""
+		else:	colstring = "38;"
+		if col==None:
+			colstring = ""
+		elif type(col)==type(1) and 0<=col<256:
+			colstring += "5;%d"%col
+		elif type(col) in [type([]),type(tuple([]))] and len(col)==3 and type(col[0])==type(col[1])==type(col[2])==type(1) and 0<=col[0]<256 and 0<=col[1]<256 and 0<=col[2]<256:
+			colstring += "2;%d;%d;%d"%tuple(col)
+		elif type(col)==type("") and len(col.split(','))==3:
+			col = col.strip('(').strip(')').split(',')
+			if not (col[0].isdigit() and 0<=int(col[0])<6 and col[1].isdigit() and 0<=int(col[1])<6 and col[2].isdigit() and 0<=int(col[2])<6):	colstring = ""
+			else:	
+				R, G, B = int(col[0]), int(col[1]), int(col[2])
+				colstring = "38;5;%d"%( (R*36)+(G*6)+B+16 )
+		elif type(col)==type("") and len(col)==7 and col[0]=='#' and [col[n].upper() in "0123456789ABCDEF" for n in range(1,7)]==[True,True,True,True,True,True]:
+			colstring += "2;%d;%d;%d"%(int(col[1:3],16), int(col[3:5],16), int(col[5:7],16))
+		elif type(col)==type("") and col.lower() in self.__colorname.keys():
+			colstring += ""+str(self.__colorname[col.lower()][0])
+		elif type(col)==type("") and 5<=len(col)<=6 and col.lower()[:4] in ["gray","grey"] and col[4:].isdigit() and 0<=int(col[4:])<=25:
+			colstring += "5;"+str(self.__greyscaleramp[int(col[4:])][0])
+		else:	colstring = ""
+		return(colstring)
+	def color(self,foreground=None,background=None,underline=None):
 		if foreground==None and background==None:	return(self._esc+"[0m")
 		ret = ""
-		def processcolor(col):
-			if col==None:
-				colstring = ""
-			elif type(col)==type(1) and 0<=col<256:
-				colstring = "38;5;%d"%col
-			elif type(col) in [type([]),type(tuple([]))] and len(col)==3 and type(col[0])==type(col[1])==type(col[2])==type(1) and 0<=col[0]<256 and 0<=col[1]<256 and 0<=col[2]<256:
-				colstring = "38;2;%d;%d;%d"%tuple(col)
-			elif type(col)==type("") and len(col.split(','))==3:
-				col = col.strip('(').strip(')').split(',')
-				if not (col[0].isdigit() and 0<=int(col[0])<6 and col[1].isdigit() and 0<=int(col[1])<6 and col[2].isdigit() and 0<=int(col[2])<6):	colstring = ""
-				else:	
-					R, G, B = int(col[0]), int(col[1]), int(col[2])
-					colstring = "38;5;%d"%( (R*36)+(G*6)+B+16 )
-			elif type(col)==type("") and len(col)==7 and col[0]=='#' and [col[n].upper() in "0123456789ABCDEF" for n in range(1,7)]==[True,True,True,True,True,True]:
-				colstring = "38;2;%d;%d;%d"%(int(col[1:3],16), int(col[3:5],16), int(col[5:7],16))
-			elif type(col)==type("") and col.lower() in self.__colorname.keys():
-				colstring = "38;"+str(self.__colorname[col.lower()][0])
-			elif type(col)==type("") and 5<=len(col)<=6 and col.lower()[:4] in ["gray","grey"] and col[4:].isdigit() and 0<=int(col[4:])<=25:
-				colstring = "38;5;"+str(self.__greyscaleramp[int(col[4:])][0])
-			else:	colstring = ""
-			return(colstring)
-		if foreground!=None:	ret += processcolor(foreground)
+		if foreground="default":	ret += "39"
+		elif foreground!=None:	ret += self.__processcolor(foreground)
 		if foreground!=None and background!=None and ret:	ret += ';'
-		if background!=None:
-			tmp = processcolor(background)
+		if background=="default":	ret += "49"
+		elif background!=None:
+			tmp = self.__processcolor(background,bg=True)
+			if len(tmp.split(';')):
+				msg = int(tmp.split(';')[0])
+				if 30<=msg<=39 or 90<=msg<=97:
+					tmp = str(msg+10)+';'+';'.join(tmp.split(';')[1:])
+			ret += tmp
+		if (background!=None or foreground!=None) and underline!=None and ret:	ret += ';'
+		if underline=="default":	ret += "59"
+		elif underline!=None:
+			tmp = self.__processcolor(background,u=True)
 			if len(tmp.split(';')):
 				msg = int(tmp.split(';')[0])
 				if 30<=msg<=39 or 90<=msg<=97:
@@ -145,11 +159,20 @@ class ANSITerminal:
 	def bold(self,status=True):	return(self.___typestatus(status,1,22))
 	def dim(self,status=True):	return(self.___typestatus(status,2,22))
 	def italic(self,status=True):	return(self.___typestatus(status,3,23))
-	def underline(self,status=True):	return(self.___typestatus(status,4,24))
+	def underline(self,status=True,color=None):
+		ret = self.___typestatus(status,4,24)
+		if status and color:	return(ret[:-1]+';'+self.color(underline=color)+'m')
+		return(ret)
 	def blink(self,status=True):	return(self.___typestatus(status,5,25))
 	def inverse(self,status=True):	return(self.___typestatus(status,7,27))
+	def superscript(self,status=True):		return(self.___typestatus(status,73,75))
+	def subscript(self,status=True):	return(self.___typestatus(status,74,75))
 	def hidden(self,status=True):	return(self.___typestatus(status,8,28))
 	def strikethrough(self,status=True):	return(self.___typestatus(status,9,29))
+	def framed(self,status=True):		return(self.___typestatus(status,51,54))
+	def encircled(self,status=True):	return(self.___typestatus(status,52,54))
+	def overlined(self,status=True):	return(self.___typestatus(status,53,55))
+	def proportional(self,status=True):	return(self.___typestatus(status,26,50))
 	def erase(self,mode):
 		if (not mode) or mode.lower() in ["in display","indisplay"]:	code = "J"
 		elif mode.lower() ["cursor2end scr"]:	code = "0J"
@@ -166,9 +189,12 @@ class ANSITerminal:
 	def B(self,status=True):	return(self.bold(status))
 	def I(self,status=True):	return(self.italic(status))
 	def U(self,status=True):	return(self.underline(status))
+	def sub(self,status=True):	return(self.subscript(status))
+	def sup(self,status=True):	return(self.superscript(status))
 	def faint(self,status=True):	return(self.dim(status))
 	def reverse(self,status=True):	return(self.inverse(status))
 	def invisible(self,status=True):	return(self.hidden(status))
+	def font(self,fontnum=0):	return(self._esc+"[%dm"%(10+min(0,max(10,int(fontnum)))))
 	def clr(self,mode):	return(self.erase(mode))
 
 tty = ANSITerminal()
