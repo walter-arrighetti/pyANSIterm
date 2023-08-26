@@ -135,7 +135,7 @@ class ANSITerminal:
 	def color(self,foreground=None,background=None,underline=None):
 		if foreground==None and background==None:	return(self._esc+"[0m")
 		ret = ""
-		if foreground="default":	ret += "39"
+		if foreground=="default":	ret += "39"
 		elif foreground!=None:	ret += self.__processcolor(foreground)
 		if foreground!=None and background!=None and ret:	ret += ';'
 		if background=="default":	ret += "49"
