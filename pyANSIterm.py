@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 ##########################################################
-#  pyANSIterm 0.2                                        #
+#  pyANSIterm 0.3                                        #
 #--------------------------------------------------------#
 #   Interates with a terminal using ANSI control codes   #
 #--------------------------------------------------------#
@@ -9,6 +9,8 @@
 #  < https://github.com/walter-arrighetti/pyANSIterm >   #
 #                                                        #
 ##########################################################
+
+cubeSize = 8	# size for the subsampled cube for RGB/8 (24bpp) capabilities' display
 
 __ansicmd = lambda strval:	'\x1B[' + strval + 'm'
 __ansirst = '\x1B[0m'
@@ -189,6 +191,8 @@ class ANSITerminal:
 	def B(self,status=True):	return(self.bold(status))
 	def I(self,status=True):	return(self.italic(status))
 	def U(self,status=True):	return(self.underline(status))
+	def R(self,status=True):	return(self.inverse(status))
+	def st(self,status=True):	return(self.strikethrough(status))
 	def sub(self,status=True):	return(self.subscript(status))
 	def sup(self,status=True):	return(self.superscript(status))
 	def faint(self,status=True):	return(self.dim(status))
@@ -199,10 +203,12 @@ class ANSITerminal:
 
 tty = ANSITerminal()
 
-print('\n'+tty.B()+"CGA"+tty.C()+" system colors ("+tty.U()+"16"+tty.C()+" colors):")
+print("\nThe "+tty.U(True)+"16"+tty.U(False)+' '+tty.I(True)+"foreground"+tty.I(False)+" system colors:  "+''.join([tty.C(c)+"%1X"%c for c in range(16)])+tty.C()+'\n')
+
+print(tty.B(True)+"CGA"+tty.B(False)+" system colors ("+tty.U(True)+"16"+tty.U(False)+" colors):")
 print(''.join([tty.C("grey%d"%(17-col),col)+"%02X"%col for col in range(16) ]) +tty.C()+'\n')
 
-print(tty.B()+"EGA"+tty.C()+"/MCGA color cube ("+tty.U()+"6x6x6"+tty.C()+" = 216 colors):")
+print(tty.B(True)+"EGA"+tty.B(False)+"/MCGA color cube ("+tty.U(True)+"6x6x6"+tty.U(False)+" = 216 colors):")
 print((tty.C()+'\n').join([
 	(tty.C()+' ').join([
 		''.join([tty.C("cyan" if (r+g+b)%2 else "magenta",(r*36)+(g*6)+b+16)+"%02x"%((r*36)+(g*6)+b+16)
@@ -210,15 +216,15 @@ print((tty.C()+'\n').join([
 		for g in range(6)])
 	for r in range(6)]) +tty.C()+'\n')
 
-print(tty.B()+"EGA"+tty.C()+"/MCGA greyscale ramp (24 colors):")
+print(tty.B(True)+"EGA"+tty.B(False)+"/MCGA greyscale ramp (24 colors):")
 print(''.join([tty.C(1+w%2 if w<12 else 3-w%2,"gray%d"%w)+"%02x"%(w+232) for w in range(24)]) +tty.C()+'\n')
 
-
-print(tty.B()+"VGA"+tty.C()+" color cube ("+tty.I()+"subsampled"+tty.C()+" 7x7x7 = 343 colors from a "+tty.U()+"16.8M"+tty.C()+" total colors)")
+print(tty.B(True)+"VGA"+tty.B(False)+" color cube ("+tty.I(True)+"subsampled"+tty.I(False)+(" %dx%dx%d = %d colors from a "%(cubeSize,cubeSize,cubeSize,cubeSize**3))+tty.U(True)+"16.8M"+tty.U(False)+" total colors)")
 print((tty.C()+'\n').join([
 	(tty.C()+' ').join([
 		''.join([tty.C("light-blue" if (r+g+b)%2 else "yellow",[r,g,b])+"  " 
-			for b in range(5,256,32)])
-		for g in range(5,255,32)])
-	for r in range(5,255,32)]) +tty.C()+'\n')
+			for b in range(5,256,256//cubeSize)])
+		for g in range(5,255,256//cubeSize)])
+	for r in range(5,255,256//cubeSize)]) +tty.C()+'\n')
 
+print(tty.B(True)+"bold"+tty.B(False)+' '+tty.I(True)+"italic"+tty.I(False)+' '+tty.U(True)+"underline"+tty.U(False)+' '+tty.blink(True)+"blinking"+tty.blink(False)+' '+tty.st(True)+"strikethrough"+tty.st(False)+' '+tty.R(True)+"reverse"+tty.R(False)+' '+tty.sup(True)+"sup"+tty.sup(False)+tty.sub(True)+"sub"+tty.sub(False)+"script "+tty.faint(True)+"faint"+tty.faint(False)+'\n')
